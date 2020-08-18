@@ -1,21 +1,23 @@
 import '../css/style.scss';
 import Project from './model/project';
 import {
-  addProject, updateProjects, generateID, getProjectArr,
-  updateLocalStorage, deleteProject, findProject, validateInput,
+  addProject, updateProjects, getProjectArr,
+  updateLocalStorage, deleteProject, findProject, validateInput, updateCompletion, getRedAlert,
 } from './controller/projectCtrl';
-import { renderProject, clearInput, selectedProject } from './view/projectView';
+import {
+  renderProject, clearInput, selectedProject, renderNav,
+} from './view/projectView';
 import * as todoListCtrl from './controller/todoListCtrl';
 import dom from './view/domStrings';
 import {
   renderTodoSection, getTodoInfo, renderTodoList, clearTodo, toggleForm, resetForm, toggleDetails,
   updateTodoInfo, setTodoInfo, toggleEditBtn, validateForm,
 } from './view/todoView';
-
+import TodoItem from './model/todo';
 
 function createProject(title) {
-  const ID = generateID(getProjectArr());
-  const p = Project(title, ID);
+  getRedAlert();
+  const p = Project(title);
   addProject(p);
   updateLocalStorage();
   renderProject();
@@ -24,13 +26,13 @@ function createProject(title) {
 
 function createTodo(projectID) {
   const projects = getProjectArr();
-  const project = projects.find(element => element.id === projectID);
-  const projectIndex = projects.indexOf(project);
-  const ID = generateID(project.todoList);
-  const todo = getTodoInfo();
-  if (validateForm(todo)) {
-    todo.id = ID;
-    todoListCtrl.addTodo(projects, projectIndex, todo);
+  const projectIndex = projects.findIndex(element => element.id === projectID);
+  const {
+    title, due, priority, description,
+  } = getTodoInfo();
+  if (validateForm(title, due, priority, description) !== false) {
+    const newTodo = TodoItem(title, description, due, priority);
+    todoListCtrl.addTodo(projects, projectIndex, newTodo);
     updateLocalStorage();
     toggleForm();
     const updatedProjects = getProjectArr();
@@ -54,48 +56,26 @@ const mainController = (() => {
     const project = findProject(projectId);
     clearTodo();
     selectedProject(projectId);
-    renderTodoSection();
+    renderTodoSection(project.title);
     renderTodoList(project);
   };
 
   const projectDelete = (id) => {
-    const ID = parseInt(id, 10);
-    deleteProject(ID);
+    deleteProject(id);
     updateLocalStorage();
     renderProject();
   };
 
   const addNewTodo = () => {
-    const selectedProject = document.querySelector('.selected');
-    const ID = parseInt(selectedProject.id, 10);
-    createTodo(ID);
-  };
-
-  const todoIconManager = e => {
-    const { id } = e.target;
-    const projectID = id.match(/\d$/).toString();
-    const todoID = id.match(/\d+/).toString();
-    const project = findProject(projectID);
-    const todo = project.todoList[todoID];
-    if (id.match(/edit-\d+/)) {
-      toggleForm();
-      setTodoInfo(todo);
-      toggleEditBtn();
-    } else if (id.match(/delete-\d+/)) {
-      todoListCtrl.deleteTodo(project, project.todoList.indexOf(todo));
-      updateLocalStorage();
-      renderTodoList(project);
-    } else if (id.match(/details-\d+/)) {
-      toggleDetails(todoID);
-    }
+    const selectedProject = document.querySelector('.selected').id;
+    createTodo(selectedProject);
   };
 
   const editBtnTodo = () => {
-    const selectedProject = document.querySelector('.selected');
-    const projectID = parseInt(selectedProject.id, 10);
+    const projectID = document.querySelector('.selected').id;
     const todoID = document.getElementById('id').value;
     const project = findProject(projectID);
-    const todo = project.todoList[todoID];
+    const todo = project.todoList.find(ele => ele.id === todoID);
     updateTodoInfo(todo);
     updateLocalStorage();
     toggleEditBtn();
@@ -106,22 +86,56 @@ const mainController = (() => {
   const eventHandler = () => {
     dom.newProject.addEventListener('keypress', addNewProject);
     dom.projectDiv.addEventListener('click', e => {
-      let projectID;
-      if (e.target.id) {
-        projectClick(e.target.id);
-      } else {
-        projectID = e.target.parentNode.firstChild.id;
+      const projectID = e.target.closest('.project').id;
+      if (e.target.matches('.project-delete-icon')) {
         projectDelete(projectID);
+        console.log(projectID);
+      } else {
+        projectClick(projectID);
       }
-      document.querySelector('.new-todo').addEventListener('click', toggleForm);
-      document.getElementById('add-todo').addEventListener('click', addNewTodo);
-      document.getElementById('edit-todo').addEventListener('click', editBtnTodo);
-      document.querySelector('.todo-list').addEventListener('click', todoIconManager);
+    });
+
+    dom.todoHeader.addEventListener('click', e => {
+      if (e.target.matches('.new-todo')) {
+        toggleForm();
+      } else if (e.target.matches('.add-todo')) {
+        addNewTodo();
+      } else if (e.target.matches('.edit-todo')) {
+        editBtnTodo();
+      }
+    });
+
+    document.querySelector('.todo-lists').addEventListener('click', e => {
+      const id = e.target.closest('.todo-item').dataset.info;
+      const ids = id.split('-');
+      const todoID = ids[0];
+      const projectID = ids[1];
+      const project = findProject(projectID);
+      const index = project.todoList.findIndex(ele => ele.id === todoID);
+      const todo = project.todoList[index];
+      if (e.target.matches('.status-icon')) {
+        e.target.classList.toggle('status-green');
+        // update the todo list
+        project.todoList[index].status = !project.todoList[index].status;
+        const a = document.querySelector(`[data-projectinfo=c-${projectID}]`);
+        a.textContent = updateCompletion(project);
+        updateLocalStorage();
+      } else if (e.target.matches('.delete-icon')) {
+        todoListCtrl.deleteTodo(project, project.todoList.indexOf(todo));
+        updateLocalStorage();
+        renderTodoList(project);
+      } else if (e.target.matches('.edit-icon')) {
+        toggleForm();
+        setTodoInfo(todo);
+        toggleEditBtn();
+      } else if (e.target.matches('.details-icon')) {
+        toggleDetails(todoID);
+      }
     });
   };
   return { eventHandler };
 })();
-
+renderNav();
 updateProjects();
 renderProject();
 mainController.eventHandler();
