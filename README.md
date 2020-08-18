@@ -15,6 +15,8 @@
 - Javascript
 - Webpack
 
+## [Live demo](https://sumancrest0001.github.io/todo-list/)
+
 ## Screenshot
 ![image](dist/img/screenshot2.png)
 
@@ -23,8 +25,6 @@
 - Run <cd todo-list> from the current directory.
 - Run <npm install> to have all the needed packages to run the app.
 - Run webpack with <npm run build> command
-
-## Live Demo
 
 
 
