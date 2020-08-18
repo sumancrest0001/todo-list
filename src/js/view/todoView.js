@@ -1,10 +1,15 @@
-const section = document.querySelector('.todo-section');
+import { limitTitle } from './projectView';
 
-function renderHead() {
-  const todoHead = `<div class="col-12 todo-head">
-                        <h2 class="todo-head">List of TODOs</h2>
+const section = document.querySelector('.todo-header-section');
+
+function renderHead(title) {
+  const todoHead = `<div class="col-12">
+                      <h2 class="project-header">${title}</h2>
+                      <div class="todo-head">
+                        <h2>TODOs</h2>
                         <p><i class="fa fa-plus-circle new-todo"></i></p>
-                      </div>`;
+                      </div>
+                    </div>`;
   return todoHead;
 }
 
@@ -21,8 +26,8 @@ function renderForm() {
                             </select><br>
                             <textarea id="todoDescription" rows="3" cols="30" placeholder="Add description" required></textarea><br>
                             <input type="hidden" id="id" value="null"/><br>
-                            <button type="button" class="btn-lg btn-success" id="add-todo">Add</button>
-                            <button type="button" class="btn-lg btn-success hidden" id="edit-todo">Edit</button>
+                            <input type="button" class="btn-success add-todo" value="Add">
+                            <input type="button" class="btn-success hidden edit-todo" value="Edit">
                           </form>
                         </div>`;
   return todoForm;
@@ -32,10 +37,36 @@ const clearTodo = () => {
   section.innerHTML = '';
 };
 
-function addDetails(parent, date, description, id) {
+function priorityColor(priority) {
+  let color;
+  switch (priority) {
+    case 'urgent':
+      color = '#f58276';
+      break;
+    case 'high':
+      color = '#f5c276';
+      break;
+    case 'low':
+      color = '#b1b3b2';
+      break;
+    default:
+      color = '#76f5f1';
+      break;
+  }
+  return color;
+}
+
+function addDetails(parent, title, date, description, id) {
   const detailSection = document.createElement('div');
-  detailSection.classList.add('row', 'col-12', 'details-section', 'hidden');
+  detailSection.classList.add('details-section', 'hidden');
   detailSection.setAttribute('id', `detail-section-${id}`);
+  const listIcon = document.createElement('i');
+  listIcon.classList.add('fa', 'fa-chevron-right');
+  const Title = document.createElement('span');
+  Title.textContent = `Title: ${title}`;
+  const fullTitle = document.createElement('p');
+  fullTitle.append(listIcon);
+  fullTitle.append(Title);
   const dueDate = document.createElement('p');
   const listIcon1 = document.createElement('i');
   listIcon1.classList.add('fa', 'fa-chevron-right');
@@ -50,6 +81,7 @@ function addDetails(parent, date, description, id) {
   dueDate.append(due);
   descriptionSection.append(listIcon2);
   descriptionSection.append(desc);
+  detailSection.append(fullTitle);
   detailSection.append(dueDate);
   detailSection.append(descriptionSection);
   parent.append(detailSection);
@@ -57,68 +89,68 @@ function addDetails(parent, date, description, id) {
 
 function renderTodoList(project) {
   const todo = project.todoList;
-  const projectsDiv = document.querySelector('.todo-list');
+  const projectsDiv = document.querySelector('.todo-lists');
   projectsDiv.innerHTML = '';
   todo.forEach(todo => {
     const todoItem = document.createElement('div');
     const todoTitle = document.createElement('div');
-    todoItem.classList.add('todo-item', 'row', 'my-3');
-    todoItem.setAttribute('id', todo.id);
-    todoTitle.classList.add('todo-title', 'col-8');
+    const visibleTodo = document.createElement('div');
+    todoItem.classList.add('todo-item');
+    todoItem.style.color = priorityColor(todo.priority);
+    todoItem.setAttribute('data-info', `${todo.id}-${project.id}`);
+    visibleTodo.classList.add('visible-todo-item');
+    todoTitle.classList.add('todo-title');
     const todoIcons = document.createElement('div');
     const icon1 = document.createElement('i');
     const icon2 = document.createElement('i');
     const icon3 = document.createElement('i');
     const icon4 = document.createElement('i');
-    todoIcons.classList.add('todo-icons', 'col-3');
-    icon1.classList.add('fa', 'fa-chevron-right');
+    todoIcons.classList.add('todo-icons');
+    icon1.classList.add('fa', 'fa-minus-circle', 'status-icon');
+    icon1.style.color = '#acadac';
+    if (todo.status) {
+      icon1.classList.add('status-green');
+    }
     icon2.classList.add('fa', 'fa-window-close', 'delete-icon');
-    icon2.setAttribute('id', `delete-${todo.id}-${project.id}`);
     icon3.classList.add('fa', 'fa-pencil', 'edit-icon');
-    icon3.setAttribute('id', `edit-${todo.id}-${project.id}`);
     icon4.classList.add('fa', 'fa-caret-down', 'details-icon');
     icon4.setAttribute('id', `details-${todo.id}`);
     const title = document.createElement('span');
-    title.textContent = todo.title;
-    const priority = document.createElement('span');
-    priority.classList.add('priority-status');
+    title.textContent = limitTitle(todo.title, 30);
+    const priority = document.createElement('div');
     priority.textContent = todo.priority;
     todoTitle.append(icon1);
     todoTitle.append(title);
-    todoItem.appendChild(priority);
-    todoTitle.append(icon1);
-    todoTitle.append(title);
-    todoItem.append(todoTitle);
-    todoItem.append(todoIcons);
+    todoItem.appendChild(visibleTodo);
+    visibleTodo.append(todoTitle);
+    visibleTodo.append(priority);
+    visibleTodo.append(todoIcons);
     todoIcons.append(icon2);
     todoIcons.append(icon3);
     todoIcons.append(icon4);
-    addDetails(todoItem, todo.due, todo.description, todo.id);
+    addDetails(todoItem, todo.title, todo.due, todo.description, todo.id);
     projectsDiv.append(todoItem);
   });
 }
 
 function getTodoInfo() {
-  const todo = {
-    title: document.querySelector('#todoTitle').value,
-    due: document.querySelector('#todoDue').value,
-    priority: document.querySelector('#priority').value,
-    description: document.querySelector('#todoDescription').value,
+  const title = document.querySelector('#todoTitle').value;
+  const due = document.querySelector('#todoDue').value;
+  const priority = document.querySelector('#priority').value;
+  const description = document.querySelector('#todoDescription').value;
+  return {
+    title, due, priority, description,
   };
-  return todo;
 }
 
-function validateForm(todo) {
-  const {
-    title, due, priority, description,
-  } = todo;
+function validateForm(title, due, priority, description) {
   const message = document.querySelector('.alert-message');
   if (title === '' || due === '' || priority === '' || description === '') {
     message.classList.remove('hidden');
+    setTimeout(() => {
+      message.classList.add('hidden');
+    }, 2000);
     return false;
-  }
-  if (!message.classList.contains('hidden')) {
-    message.classList.add('hidden');
   }
   return true;
 }
@@ -139,14 +171,11 @@ function updateTodoInfo(todo) {
   todo.id = document.querySelector('#id').value;
 }
 
-function renderTodoSection() {
-  const a = renderHead();
+function renderTodoSection(title) {
+  const a = renderHead(title);
   section.insertAdjacentHTML('afterbegin', a);
   const b = renderForm();
   section.insertAdjacentHTML('beforeend', b);
-  const div = document.createElement('div');
-  div.classList.add('todo-list', 'col-12');
-  section.append(div);
 }
 
 function toggleForm() {
@@ -154,8 +183,8 @@ function toggleForm() {
 }
 
 function toggleEditBtn() {
-  document.getElementById('add-todo').classList.toggle('hidden');
-  document.getElementById('edit-todo').classList.toggle('hidden');
+  document.querySelector('.add-todo').classList.toggle('hidden');
+  document.querySelector('.edit-todo').classList.toggle('hidden');
 }
 
 function resetForm() {
